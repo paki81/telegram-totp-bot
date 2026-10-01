@@ -1,0 +1,33 @@
+{
+  "name": "telegram-totp-bot",
+  "version": "1.0.0",
+  "description": "Self-hosted 2FA (TOTP) authenticator for Telegram: bot, Mini App and web app with passkeys, multi-user encrypted vaults, Ente Auth import/export",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test.js && node smoke.js && node webapp-test.js"
+  },
+  "keywords": ["telegram", "bot", "totp", "2fa", "authenticator", "mini-app", "passkey", "webauthn", "self-hosted", "ente-auth"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paki81/telegram-totp-bot.git"
+  },
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.3",
+    "jpeg-js": "^0.4.4",
+    "jsqr": "^1.4.0",
+    "libsodium-wrappers-sumo": "^0.7.15",
+    "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4",
+    "simple-icons": "^15.16.0"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}

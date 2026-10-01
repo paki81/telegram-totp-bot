@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="aurora">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Codici 2FA</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: radial-gradient(120% 80% at 10% 0%, #e9d5ff 0%, transparent 60%),
+                radial-gradient(100% 70% at 100% 100%, #bae6fd 0%, transparent 60%),
+                radial-gradient(60% 50% at 80% 10%, #fbcfe8 0%, transparent 60%),
+                #f5f3ff;
+    background-attachment: fixed;
+    color: #1e1b4b;
+    -webkit-font-smoothing: antialiased;
+  }
+  .g-wrap {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px;
+    text-align: center; padding: 24px; box-sizing: border-box;
+  }
+  .g-card {
+    width: 100%; max-width: 380px; box-sizing: border-box;
+    padding: 30px 26px 26px; border-radius: 30px;
+    background: rgba(255,255,255,.5);
+    border: 1px solid rgba(255,255,255,.85);
+    backdrop-filter: blur(26px) saturate(190%);
+    -webkit-backdrop-filter: blur(26px) saturate(190%);
+    box-shadow: 0 24px 60px -12px rgba(76,29,149,.22), inset 0 1px 0 rgba(255,255,255,.95);
+  }
+  .g-logo {
+    width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 20px;
+    display: grid; place-items: center; color: #fff;
+    background: linear-gradient(135deg, #7c3aed, #db2777);
+    box-shadow: 0 14px 30px -10px #7c3aed, inset 0 1px 0 rgba(255,255,255,.45);
+  }
+  .g-card h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; letter-spacing: -.4px; }
+  .g-card h2 { margin: 0 0 8px; font-size: 18px; }
+  .g-card p { margin: 0; font-size: 14px; color: rgba(30,27,75,.62); line-height: 1.5; }
+  .g-stack { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+  .g-btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    height: 52px; border-radius: 16px; border: none; cursor: pointer;
+    font: inherit; font-size: 15.5px; font-weight: 700; text-decoration: none;
+    transition: transform .15s ease, filter .2s;
+  }
+  .g-btn:active { transform: scale(.97); }
+  .g-btn:disabled { opacity: .6; pointer-events: none; }
+  .g-tg { color: #fff; background: linear-gradient(135deg, #2AABEE, #229ED9); box-shadow: 0 12px 26px -12px #229ED9, inset 0 1px 0 rgba(255,255,255,.4); }
+  .g-pk { color: #fff; background: linear-gradient(135deg, #7c3aed, #db2777); box-shadow: 0 12px 26px -12px #7c3aed, inset 0 1px 0 rgba(255,255,255,.4); }
+  .g-ghost { color: #1e1b4b; background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.9); box-shadow: inset 0 1px 0 #fff; }
+  .g-code {
+    margin: 18px auto 6px; font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+    font-size: 36px; font-weight: 800; letter-spacing: 6px;
+    background: linear-gradient(135deg, #1e1b4b, #7c3aed); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .g-qr { width: 190px; height: 190px; margin: 14px auto 4px; padding: 10px; border-radius: 20px; background: #fff; box-shadow: 0 10px 24px -14px rgba(0,0,0,.35); }
+  .g-qr svg { width: 100%; height: 100%; display: block; }
+  .g-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; font-size: 13.5px; font-weight: 600; color: rgba(30,27,75,.7); }
+  .g-spin {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2.5px solid rgba(124,58,237,.2); border-top-color: #7c3aed;
+    animation: gspin .9s linear infinite;
+  }
+  .g-spin.big { width: 38px; height: 38px; margin: 0 auto 14px; border-width: 3px; }
+  @keyframes gspin { to { transform: rotate(360deg); } }
+  .g-err { margin-top: 12px; font-size: 13.5px; font-weight: 600; color: #e11d48; min-height: 1em; }
+  .g-foot { font-size: 12px; color: rgba(30,27,75,.5); max-width: 380px; line-height: 1.5; }
+  .g-lock { font-size: 40px; margin-bottom: 8px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 380px) { .g-qr { display: none; } }
+</style>
+</head>
+<body>
+<div class="g-wrap" id="gate">
+  <div class="g-card"><div class="g-spin big"></div><p>Verifica accesso…</p></div>
+</div>
+<script>
+// Gate: il codice reale dell'app viene servito solo dopo l'autenticazione server-side
+// (initData firmato da Telegram oppure sessione web). Isolato in IIFE per non
+// inquinare lo scope globale dell'app iniettata.
+(function () {
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var initData = (tg && tg.initData) || '';
+  if (tg && initData) { try { tg.ready(); tg.expand(); } catch (e) {} }
+  var gate = document.getElementById('gate');
+  var LOGO = '<div class="g-logo"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor"/></svg></div>';
+  var TG_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>';
+  var KEY_ICON = '<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg>';
+
+  function post(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body || {}),
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); });
+  }
+
+  function inject(d) {
+    window.__TOTP_INIT__ = initData;
+    var style = document.createElement('style');
+    style.textContent = d.css || '';
+    document.head.appendChild(style);
+    gate.remove();
+    var root = document.createElement('div');
+    root.id = 'app';
+    root.innerHTML = d.html;
+    document.body.appendChild(root);
+    var s = document.createElement('script');
+    s.textContent = d.js;
+    document.body.appendChild(s);
+  }
+
+  function denied() {
+    gate.innerHTML = '<div class="g-card"><div class="g-lock">🔒</div><h2>Accesso negato</h2>' +
+      '<p>Il tuo account Telegram non è autorizzato a usare questo servizio.</p></div>';
+  }
+
+  // ---------- login da browser ----------
+  var pollTimer = null;
+  function setErr(msg) { var e = document.getElementById('gErr'); if (e) e.textContent = msg || ''; }
+
+  function showLogin(msg) {
+    clearTimeout(pollTimer);
+    var hasPasskey = !!(window.PublicKeyCredential && navigator.credentials);
+    gate.innerHTML =
+      '<div class="g-card">' + LOGO +
+        '<h1>Codici 2FA</h1>' +
+        '<p>Accedi al tuo vault privato di codici di autenticazione.</p>' +
+        '<div class="g-stack">' +
+          '<button class="g-btn g-tg" id="gTg">' + TG_ICON + 'Accedi con Telegram</button>' +
+          (hasPasskey ? '<button class="g-btn g-pk" id="gPk">' + KEY_ICON + 'Accedi con passkey</button>' : '') +
+        '</div>' +
+        '<div class="g-err" id="gErr">' + (msg || '') + '</div>' +
+      '</div>' +
+      '<div class="g-foot">La prima volta accedi con Telegram, poi puoi aggiungere una passkey da ⋯ → Sicurezza per entrare con impronta, volto o PIN del dispositivo.</div>';
+    document.getElementById('gTg').addEventListener('click', telegramLogin);
+    if (hasPasskey) document.getElementById('gPk').addEventListener('click', passkeyLogin);
+  }
+
+  function telegramLogin() {
+    var btn = this;
+    btn.disabled = true;
+    setErr('');
+    post('/auth/telegram/start').then(function (r) {
+      if (!r.ok) { btn.disabled = false; return setErr(r.d.error || 'Errore'); }
+      var l = r.d;
+      gate.innerHTML =
+        '<div class="g-card">' + LOGO +
+          '<h2>Conferma in Telegram</h2>' +
+          '<p>Apri il bot e premi <b>Consenti accesso</b>. Verifica che il codice sia lo stesso:</p>' +
+          '<div class="g-code">' + l.code.replace(/[^0-9-]/g, '') + '</div>' +
+          '<div class="g-stack" style="margin-top:12px">' +
+            '<a class="g-btn g-tg" id="gOpen" href="' + l.link + '" target="_blank" rel="noopener noreferrer">' + TG_ICON + 'Apri Telegram</a>' +
+          '</div>' +
+          '<div class="g-qr" title="Inquadra con il telefono">' + l.qr + '</div>' +
+          '<p style="font-size:12.5px">Da computer: inquadra il QR con la fotocamera del telefono.</p>' +
+          '<div class="g-status"><span class="g-spin"></span><span id="gSt">In attesa di conferma…</span></div>' +
+          '<div class="g-stack"><button class="g-btn g-ghost" id="gBack">Annulla</button></div>' +
+        '</div>';
+      document.getElementById('gBack').addEventListener('click', function () { showLogin(); });
+      var started = Date.now();
+      (function poll() {
+        post('/auth/telegram/poll', { loginId: l.loginId, pollToken: l.pollToken }).then(function (p) {
+          var st = p.d.status;
+          if (st === 'approved') { document.getElementById('gSt').textContent = 'Accesso consentito, apertura…'; return boot(); }
+          if (st === 'denied') return showLogin('Accesso rifiutato dal bot.');
+          if (st === 'expired' || st === 'invalid' || Date.now() - started > 300000) return showLogin('Richiesta scaduta, riprova.');
+          pollTimer = setTimeout(poll, 2000);
+        }).catch(function () { pollTimer = setTimeout(poll, 4000); });
+      })();
+    }).catch(function () { btn.disabled = false; setErr('Errore di rete'); });
+  }
+
+  function loadWebAuthn() {
+    return new Promise(function (resolve, reject) {
+      if (window.SimpleWebAuthnBrowser) return resolve(window.SimpleWebAuthnBrowser);
+      var s = document.createElement('script');
+      s.src = '/webauthn.js';
+      s.onload = function () { resolve(window.SimpleWebAuthnBrowser); };
+      s.onerror = function () { reject(new Error('Libreria passkey non disponibile')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function passkeyLogin() {
+    var btn = this;
+    btn.disabled = true;
+    setErr('');
+    Promise.all([loadWebAuthn(), post('/auth/passkey/options')]).then(function (res) {
+      var wa = res[0], o = res[1];
+      if (!o.ok) throw new Error(o.d.error || 'Errore');
+      return wa.startAuthentication({ optionsJSON: o.d });
+    }).then(function (assertion) {
+      return post('/auth/passkey/verify', { response: assertion });
+    }).then(function (v) {
+      if (!v.ok) throw new Error(v.d.error || 'Accesso non riuscito');
+      boot();
+    }).catch(function (e) {
+      btn.disabled = false;
+      var m = e && e.name === 'NotAllowedError' ? 'Operazione annullata o passkey non disponibile su questo dispositivo.' : (e.message || 'Errore');
+      setErr(m);
+    });
+  }
+
+  // ---------- avvio ----------
+  function loadApp() {
+    return post('/api/app', initData ? { initData: initData } : {}).then(function (r) {
+      if (r.ok && r.d.html && r.d.js) return inject(r.d);
+      if (initData) return denied();
+      showLogin();
+    });
+  }
+  function boot() {
+    // nel browser verifica prima la sessione, poi scarica l'app
+    var p = initData ? loadApp() : post('/auth/session').then(function (r) {
+      if (r.ok && r.d.authenticated) return loadApp();
+      showLogin(r.ok ? '' : (r.d.error || ''));
+    });
+    p.catch(function () { initData ? denied() : showLogin('Errore di rete'); });
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

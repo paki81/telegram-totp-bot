@@ -1,0 +1,15 @@
+services:
+  telegram-totp-bot:
+    build: .
+    container_name: telegram-totp-bot
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      # put a TLS reverse proxy in front of this port for the Mini App / web app
+      - "127.0.0.1:8788:8788"
+    volumes:
+      # named volume: keeps vaults, sessions and passkeys across rebuilds (back it up!)
+      - totp-data:/app/data
+
+volumes:
+  totp-data:
