@@ -182,3 +182,5 @@ Brand names and logos belong to their respective owners. Not affiliated with Tel
 
 [AGPL-3.0](LICENSE). If you run a modified version as a public service you must make
 its source code available to its users.
+
+😎
